@@ -1,0 +1,66 @@
+# Drop this file into your HA config/packages/ directory.
+# Enable packages in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+
+template:
+  - sensor:
+      - name: "Low Battery Count"
+        unique_id: low_battery_count
+        icon: mdi:battery-alert
+        unit_of_measurement: devices
+        state: >
+          {% set ns = namespace(count=0) %}
+          {% for s in states.sensor %}
+            {% if s.attributes.get('device_class') == 'battery' %}
+              {% set val = s.state | float(-1) %}
+              {% if val >= 0 and val < 20 %}
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.count }}
+
+      - name: "Critical Battery Count"
+        unique_id: critical_battery_count
+        icon: mdi:battery-off-outline
+        unit_of_measurement: devices
+        state: >
+          {% set ns = namespace(count=0) %}
+          {% for s in states.sensor %}
+            {% if s.attributes.get('device_class') == 'battery' %}
+              {% set val = s.state | float(-1) %}
+              {% if val >= 0 and val < 10 %}
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.count }}
+
+automation:
+  - alias: "Daily Low Battery Notification"
+    id: daily_low_battery_notification
+    description: >
+      Sends a notification each morning listing every device below 20%.
+      Remove or disable this automation if you don't want daily alerts.
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.low_battery_count') | int(0) > 0 }}"
+    action:
+      - service: notify.notify
+        data:
+          title: "Low Battery Alert"
+          message: >
+            {{ states('sensor.low_battery_count') }} device(s) need new batteries:
+
+            {% for s in states.sensor
+               | selectattr('attributes.device_class', 'eq', 'battery') | list
+               | sort(attribute='state') %}
+              {% set val = s.state | float(-1) %}
+              {% if val >= 0 and val < 20 %}
+            • {{ s.name }}: {{ s.state }}%
+              {% endif %}
+            {% endfor %}

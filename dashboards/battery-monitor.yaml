@@ -1,0 +1,62 @@
+title: Battery Monitor
+views:
+  - title: Batteries
+    path: batteries
+    icon: mdi:battery
+
+    cards:
+      # ── Summary row ────────────────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.low_battery_count
+            name: Need Attention
+            icon: mdi:battery-alert
+            state_color: true
+          - type: entity
+            entity: sensor.critical_battery_count
+            name: Critical
+            icon: mdi:battery-off-outline
+            state_color: true
+
+      # ── Needs replacement (< 20%) ──────────────────────────────────────────
+      # Requires: HACS → auto-entities card
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: "Needs Replacement  (< 20%)"
+          icon: mdi:battery-alert
+          state_color: true
+        filter:
+          include:
+            - domain: sensor
+              attributes:
+                device_class: battery
+              state: "< 20"
+          exclude:
+            - state: "unavailable"
+            - state: "unknown"
+        sort:
+          method: state
+          numeric: true
+        show_empty: false
+
+      # ── All batteries, sorted lowest first ────────────────────────────────
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: All Batteries
+          icon: mdi:battery
+          state_color: true
+        filter:
+          include:
+            - domain: sensor
+              attributes:
+                device_class: battery
+          exclude:
+            - state: "unavailable"
+            - state: "unknown"
+        sort:
+          method: state
+          numeric: true
+        show_empty: false
